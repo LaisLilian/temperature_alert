@@ -1,0 +1,208 @@
+#include <LiquidCrystal_I2C.h>
+#include <OneWire.h> //BIBLIOTECA NECESSÁRIA PARA O DS18B20
+#include <DallasTemperature.h> //BIBLIOTECA NECESSÁRIA PARA O DS18B20
+#include <SoftwareSerial.h>
+#define DS18B20 7 //DEFINE O PINO DO SENSOR DS18B20
+
+//***************************DS18b20**************
+OneWire ourWire(DS18B20);//CONFIGURA UMA INSTÂNCIA ONEWIRE PARA SE COMUNICAR COM DS18B20
+DallasTemperature sensors(&ourWire); //PASSA A TEMPERATURA PARA O DallasTemperature
+//************************************************
+
+double sensor1 = 0;       // Variável para o sensor 1
+
+unsigned long ref_Tempo = 0;
+
+SoftwareSerial SIM900(2,3); // Mega 10 e 11 
+
+// Declaração dos pinos do LCD 
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Gera um simbolo de graus
+uint8_t degree[8]  = {140, 146, 146, 140, 128, 128, 128, 128};
+
+void setup() {
+  
+delay(1000); //INTERVALO DE 1000 MILISSEGUNDOS
+sensors.begin();
+  lcd.init();
+  // Print a message to the LCD.
+  lcd.backlight();
+SIM900.begin(19200);
+ Serial.begin(19200);
+  delay(1000);
+  //pinMode(vccPin, OUTPUT); digitalWrite(vccPin, HIGH);
+  //pinMode(gndPin, OUTPUT); digitalWrite(gndPin, LOW);
+
+
+  
+  lcd.createChar(0, degree);
+  lcd.setCursor(0, 0);
+  lcd.print("Inicializando...");
+  delay(15000);
+
+    SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"+5561992520961\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  SIM900.println("ENGEMATe informa unidade Albert Sabin: INICIANDO UNIDADE...");
+  updateSerial();
+  SIM900.write(26);
+
+    lcd.clear();
+}
+void loop() {
+
+  
+lcd.setCursor(0,0);//SETA O CURSOR PARA INICIAR AS ESCRITAS NO LCD
+lcd.print("Temperatura"); //IMPRIME O TEXTO NO LCD
+lcd.setCursor(13,0);//SETA O CURSOR PARA ESCREVER A PALAVRA CELSIUS NA SEGUNDA LINHA E COLUNA 9 DO DISPLAY
+lcd.print((ref_Tempo*10)/60);//IMPRIME O TEXTO NO LCD
+sensors.requestTemperatures();//REQUISITA A TEMPERATURA DO SENSOR
+lcd.setCursor(0,1);//SETA O CURSOR PARA INICIAR AS ESCRITAS NA SEGUNDA LINHA DO LCD
+sensor1 = sensors.getTempCByIndex(0);
+lcd.print(sensor1);//IMPRIME NO LCD O VALOR DA TEMPERATURA 
+lcd.write(223);//IMPRIME NO DISPLAY LCD O SÍMBOLO 'º'
+lcd.setCursor(9,1);//SETA O CURSOR PARA ESCREVER A PALAVRA CELSIUS NA SEGUNDA LINHA E COLUNA 9 DO DISPLAY
+lcd.print("CELSIUS");//IMPRIME O TEXTO NO LCD
+
+ref_Tempo++;
+
+//INTERVALO ENTRE MEDIÇÕES (DEVE SER DEFINIDO EM CONJUNTO COM O INTERVALO DE MENSAGENS
+delay(9225);
+
+  if(sensor1 < 2 || sensor1 > 6) {
+
+    sendSMS();
+     delay(120000);
+         lcd.clear();
+  }
+// *****************************************
+// ENVIANDO SMS EM PRERIODO DE TEMPO
+//******************************************
+
+if (sensor1 > 2 || sensor1 < 6){
+  if(ref_Tempo >= 1440)
+{
+  sendSMSCONTROLE() ;  // envia o SMS via modulo GSM.
+
+    ref_Tempo = 0; // nova referencia de tempo para o proximo SMS.
+
+        lcd.clear();
+}
+}
+}
+
+ void sendSMS() {
+//Serial.println("Sending SMS...");
+
+
+  SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"+5561992520961\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  SIM900.print("ENGEMATe informa unidade Albert Sabin: FORA DA FAIXA DE TOLERANCIA, temperatura em graus celcius: ");
+  SIM900.print(sensor1);
+  SIM900.println(" *C");
+  updateSerial();
+  SIM900.write(26);
+
+      delay(5000); 
+      
+//Serial.println("Sending SMS...");
+  SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"981224345\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  SIM900.print("ENGEMATe informa unidade Albert Sabin: FORA DA FAIXA DE TOLERANCIA, temperatura em graus celcius: ");
+  SIM900.print(sensor1);
+  SIM900.println(" *C");
+  updateSerial();
+  SIM900.write(26);
+
+      delay(5000); 
+
+/*
+
+//Serial.println("Sending SMS...");
+  SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"+5561984417784\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  SIM900.print("ENGEMATe informa unidade Albert Sabin: FORA DA FAIXA DE TOLERANCIA, temperatura em graus celcius: ");
+  SIM900.print(sensor1);
+  SIM900.println(" *C");
+  updateSerial();
+  SIM900.write(26);
+
+      delay(5000); 
+
+*/
+
+       
+}
+
+void  sendSMSCONTROLE() {
+
+  //Serial.println("Sending SMS...");
+ // SIM900.println("AT"); //Once the handshake test is successful, it will back to OK
+ // updateSerial();
+
+  SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"+5561992520961\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  SIM900.print("ENGEMATe informa unidade Albert Sabin: FUNCIONANDO, temperatura em graus celcius: ");
+  SIM900.print(sensor1);
+  SIM900.println(" *C");
+  updateSerial();
+  SIM900.write(26);
+
+      delay(5000); 
+
+//Serial.println("Sending SMS...");
+  SIM900.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  SIM900.println("AT+CMGS=\"+5561981224345\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
+  updateSerial();
+  //mySerial.print("Estou funcionando!"); //text content
+  //mySerial.print("Quero voltar!"); //text content
+  SIM900.print("ENGEMATe informa unidade Albert Sabin: FUNCIONANDO, temperatura em graus celcius: ");
+  SIM900.print(sensor1);
+  SIM900.println(" *C");
+  updateSerial();
+  SIM900.write(26);
+
+      delay(5000); 
+
+
+/*
+//Serial.println("Sending SMS...");
+      SIM900.print("AT+CMGF=1\r");  //Configure text mode to send or receive SMS
+      delay(1000);
+      SIM900.println("AT+CMGS=\"+5561984417784\"");  //NUMERO DO DESTINATÁRIO
+      delay(1000);
+       SIM900.println(String(F("ENGEMATe informa unidade Albert Sabin: FUNCIONANDO, temperatura =  ")) + String( sensor1 ) + String(F("*C")));  //TEXTO MENSAGEM
+      delay(100);
+      SIM900.println((char)26); //End command ^Z
+      delay(100);
+      SIM900.println();
+      delay(5000); 
+
+*/
+}
+
+
+
+void updateSerial()
+{
+  delay(500);
+  while (Serial.available()) 
+  {
+    SIM900.write(Serial.read());//Forward what Serial received to Software Serial Port
+  }
+  while(SIM900.available()) 
+  {
+    Serial.write(SIM900.read());//Forward what Software Serial received to Serial Port
+  }
+}
